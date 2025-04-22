@@ -41,7 +41,6 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using SkiaSharp;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -486,6 +485,7 @@ namespace ShareX
                 DebugHelper.WriteException(e);
                 e.ShowError();
             }
+
             return ms;
         }
 
