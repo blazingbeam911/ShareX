@@ -2205,6 +2205,7 @@ namespace ShareX.HelpersLib
         {
             FileHelpers.CreateDirectoryFromFilePath(filePath);
             ImageFormat imageFormat = GetImageFormat(filePath);
+
             try
             {
                 if (imageFormat.Equals(WebP))
