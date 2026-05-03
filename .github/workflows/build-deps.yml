@@ -1,0 +1,152 @@
+name: Build native dependencies from source
+
+# Builds libwebp, libsharpyuv, and libavif from upstream source via vcpkg, on a
+# Windows runner. Uploads the resulting DLLs as artifacts and reports their
+# SHA-256 hashes alongside the hashes of the DLLs currently committed in the
+# repo. Used to verify (or update) the bundled native binaries.
+#
+# Why this exists: the avif.dll, libwebp.dll, and libsharpyuv.dll committed to
+# this repo were originally added by third parties (ooopus, cryptofyre,
+# Delphox) and we have no record of how they were built. This workflow lets us
+# reproduce them ourselves from auditable source, with a pinned vcpkg commit
+# for determinism.
+#
+# To run: Actions tab on github.com -> "Build native dependencies from source"
+# -> Run workflow. Then download the artifacts when it finishes (~15-25 min).
+
+on:
+  workflow_dispatch:
+    inputs:
+      vcpkg_ref:
+        description: 'vcpkg ref (release tag or commit SHA). Default = pinned latest stable.'
+        required: false
+        default: '2025.12.12'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build via vcpkg on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo (for hash comparison)
+        uses: actions/checkout@v4
+
+      - name: Print committed DLL hashes
+        shell: pwsh
+        run: |
+          Write-Host "=== SHA-256 of currently-committed DLLs ===" -ForegroundColor Cyan
+          foreach ($f in 'ShareX\avif.dll', 'ShareX\libwebp.dll', 'ShareX\libsharpyuv.dll') {
+            if (Test-Path $f) {
+              $hash = (Get-FileHash $f -Algorithm SHA256).Hash
+              $size = (Get-Item $f).Length
+              Write-Host "$f : $hash ($size bytes)"
+            } else {
+              Write-Host "$f : (not present)"
+            }
+          }
+
+      - name: Clone vcpkg at pinned ref
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch "${{ inputs.vcpkg_ref }}" https://github.com/microsoft/vcpkg.git C:\vcpkg
+          if ($LASTEXITCODE -ne 0) {
+            Remove-Item -Recurse -Force C:\vcpkg -ErrorAction SilentlyContinue
+            git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+            git -C C:\vcpkg checkout "${{ inputs.vcpkg_ref }}"
+          }
+          & C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          Write-Host "vcpkg version:"
+          & C:\vcpkg\vcpkg version
+
+      - name: Cache vcpkg downloads & buildtrees
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\vcpkg\downloads
+            C:\vcpkg\installed
+          key: vcpkg-${{ inputs.vcpkg_ref }}-libavif-libwebp-x64
+
+      - name: Install libavif (with AOM and dav1d codecs) and libwebp via vcpkg
+        shell: pwsh
+        run: |
+          # libavif[aom] = AV1 encoder; libavif[dav1d] = AV1 decoder.
+          # x64-windows triplet uses MSVC (matches what C# P/Invoke expects).
+          & C:\vcpkg\vcpkg install --triplet x64-windows `
+            "libavif[core,aom,dav1d]" `
+            "libwebp"
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed" }
+
+      - name: Locate built DLLs
+        shell: pwsh
+        run: |
+          $bin = "C:\vcpkg\installed\x64-windows\bin"
+          Write-Host "=== Contents of $bin ===" -ForegroundColor Cyan
+          Get-ChildItem $bin -Filter *.dll | Select-Object Name, Length | Format-Table -AutoSize
+
+      - name: Stage just the DLLs we care about
+        shell: pwsh
+        run: |
+          $src = "C:\vcpkg\installed\x64-windows\bin"
+          $dst = "$env:GITHUB_WORKSPACE\verified-dlls"
+          New-Item -ItemType Directory -Path $dst -Force | Out-Null
+          # Copy all DLLs vcpkg produced — libavif may statically link its deps
+          # (single avif.dll) or leave them as separate DLLs depending on build
+          # config. Take everything so we can audit downstream.
+          Copy-Item "$src\*.dll" -Destination $dst
+          Get-ChildItem $dst | Format-Table Name, Length -AutoSize
+
+      - name: Print SHA-256 of freshly-built DLLs
+        shell: pwsh
+        run: |
+          Write-Host "=== SHA-256 of freshly-built DLLs ===" -ForegroundColor Green
+          Get-ChildItem "$env:GITHUB_WORKSPACE\verified-dlls" -Filter *.dll | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+            Write-Host "$($_.Name) : $hash ($($_.Length) bytes)"
+          }
+
+      - name: Compare with committed DLLs
+        shell: pwsh
+        run: |
+          Write-Host "=== Side-by-side comparison ===" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "NOTE: byte-for-byte hash matches are NOT expected. MSVC embeds build"
+          Write-Host "timestamps and other non-deterministic data. The verification this"
+          Write-Host "workflow gives is 'these DLLs come from a specific upstream source"
+          Write-Host "commit built with a known toolchain', not 'these are bit-identical"
+          Write-Host "to what's committed'."
+          Write-Host ""
+          $pairs = @(
+            @{ Name = 'libwebp.dll';     Committed = 'ShareX\libwebp.dll' }
+            @{ Name = 'libsharpyuv.dll'; Committed = 'ShareX\libsharpyuv.dll' }
+            @{ Name = 'avif.dll';        Committed = 'ShareX\avif.dll' }
+          )
+          foreach ($p in $pairs) {
+            $built = "verified-dlls\$($p.Name)"
+            if ((Test-Path $built) -and (Test-Path $p.Committed)) {
+              $bh = (Get-FileHash $built -Algorithm SHA256).Hash
+              $ch = (Get-FileHash $p.Committed -Algorithm SHA256).Hash
+              $bs = (Get-Item $built).Length
+              $cs = (Get-Item $p.Committed).Length
+              $match = if ($bh -eq $ch) { 'MATCH' } else { 'DIFFER (expected)' }
+              Write-Host ""
+              Write-Host "$($p.Name) [$match]" -ForegroundColor Cyan
+              Write-Host "  built     : $bh ($bs bytes)"
+              Write-Host "  committed : $ch ($cs bytes)"
+            } elseif (-not (Test-Path $built)) {
+              Write-Host ""
+              Write-Host "$($p.Name) : NOT BUILT by vcpkg — investigate" -ForegroundColor Red
+            } else {
+              Write-Host ""
+              Write-Host "$($p.Name) : not present in committed DLLs"
+            }
+          }
+
+      - name: Upload verified DLLs
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-dlls-${{ inputs.vcpkg_ref }}
+          path: verified-dlls/
+          retention-days: 90
