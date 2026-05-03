@@ -341,10 +341,35 @@ namespace ShareX
         public int ImageJPEGQuality = 90;
         public GIFQuality ImageGIFQuality = GIFQuality.Default;
         public AvifTuneIQ ImageAVIFTuneIQ = AvifTuneIQ.Default;
+
+        // WebP encoder settings -- all default to libwebp's own defaults so that existing
+        // settings files (which lack these fields) deserialize to sensible values.
+        public int ImageWebPQuality = 75;
+        public WebPCompressionMode ImageWebPMode = WebPCompressionMode.Lossy;
+        public int ImageWebPMethod = 4;
+        public WebPEncodingPreset ImageWebPPreset = WebPEncodingPreset.Default;
+        public int ImageWebPNearLosslessLevel = 60;
+        public int ImageWebPAlphaQuality = 100;
+        public bool ImageWebPExact = false;
+
         public bool ImageAutoUseJPEG = true;
         public int ImageAutoUseJPEGSize = 2048;
         public bool ImageAutoJPEGQuality = false;
         public FileExistAction FileExistAction = FileExistAction.Ask;
+
+        public WebPEncodingOptions ToWebPEncodingOptions()
+        {
+            return new WebPEncodingOptions
+            {
+                Mode = ImageWebPMode,
+                Quality = ImageWebPQuality,
+                Method = ImageWebPMethod,
+                Preset = ImageWebPPreset,
+                NearLosslessLevel = ImageWebPNearLosslessLevel,
+                AlphaQuality = ImageWebPAlphaQuality,
+                Exact = ImageWebPExact
+            };
+        }
 
         #endregion Image / General
 
