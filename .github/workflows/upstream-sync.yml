@@ -11,6 +11,7 @@ name: Upstream sync
 #   feature/delphox-av1-crf            -> rebases onto feature/pr-8151-webp-avif-av1
 #   feature/delphox-codec-fix          -> rebases onto feature/delphox-av1-crf
 #   feature/delphox-libavif-update     -> rebases onto feature/pr-8151-webp-avif-av1
+#   feature/webp-encoding-options      -> rebases onto feature/pr-8151-webp-avif-av1
 #   feature/repoint-updater            -> rebases onto develop
 #   feature/build-deps-from-source     -> not rebased (CI infra, doesn't touch source)
 #   feature/replace-with-vcpkg-builds  -> not rebased (modifies DLLs that pr-8151 added)
@@ -97,6 +98,7 @@ jobs:
             "feature/delphox-av1-crf:feature/pr-8151-webp-avif-av1"
             "feature/delphox-codec-fix:feature/delphox-av1-crf"
             "feature/delphox-libavif-update:feature/pr-8151-webp-avif-av1"
+            "feature/webp-encoding-options:feature/pr-8151-webp-avif-av1"
             "feature/repoint-updater:develop"
           )
 
@@ -154,6 +156,7 @@ jobs:
             feature/delphox-av1-crf \
             feature/delphox-codec-fix \
             feature/delphox-libavif-update \
+            feature/webp-encoding-options \
             feature/repoint-updater \
             feature/build-deps-from-source \
             feature/replace-with-vcpkg-builds; do
@@ -180,6 +183,7 @@ jobs:
             feature/delphox-av1-crf \
             feature/delphox-codec-fix \
             feature/delphox-libavif-update \
+            feature/webp-encoding-options \
             feature/repoint-updater; do
             git push origin "$b" --force-with-lease
           done

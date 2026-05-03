@@ -27,6 +27,10 @@ develop  (mirrors upstream/develop, never committed to directly)
         |       |
         |       +-- feature/delphox-libavif-update     [1 commit]
         |
+        +-- feature/pr-8151-webp-avif-av1
+        |       |
+        |       +-- feature/webp-encoding-options       [5 commits]
+        |
         +-- feature/repoint-updater                    [1 commit, independent]
         |
         +-- feature/build-deps-from-source             [1 commit, fork-native]
@@ -50,6 +54,7 @@ time the upstream-sync workflow runs; treat anything you do directly on
 | `feature/delphox-av1-crf`                  | [Delphox 643176fe5](https://github.com/Delphox/ShareX/commit/643176fe5) | Reuse the x264 tab for AV1 so CRF mode works                          |
 | `feature/delphox-codec-fix`                | [Delphox 1246b2a0f](https://github.com/Delphox/ShareX/commit/1246b2a0f) | Fix double-codec-appending bug in FFmpeg argument builder             |
 | `feature/delphox-libavif-update`           | [Delphox 45a1ce6a7](https://github.com/Delphox/ShareX/commit/45a1ce6a7) | Update bundled `avif.dll` to v1.4.0 + dshow regex fix for new FFmpeg  |
+| `feature/webp-encoding-options`            | (us)                                                                  | Configurable WebP encoder: mode (lossy/near-lossless/lossless), quality, method, preset, near-lossless level, alpha quality, exact RGB |
 | `feature/repoint-updater`                  | (us, based on Delphox 009a084d3 pattern)                              | Patch in-app updater to check `blazingbeam911/ShareX` instead of upstream |
 | `feature/build-deps-from-source`           | (us)                                                                  | Adds `build-deps.yml` workflow and `BUNDLED-BINARIES.md`              |
 | `feature/replace-with-vcpkg-builds`        | (us)                                                                  | Replaces the third-party `avif.dll`, `libwebp.dll`, `libsharpyuv.dll` with vcpkg-built versions |
