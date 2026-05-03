@@ -105,6 +105,8 @@
             tpQuality = new System.Windows.Forms.TabPage();
             pImage = new System.Windows.Forms.Panel();
             cbImageAutoJPEGQuality = new System.Windows.Forms.CheckBox();
+            cbImageAVIFTuneIQ = new System.Windows.Forms.ComboBox();
+            lblImageAVIFTuneIQ = new System.Windows.Forms.Label();
             cbImagePNGBitDepth = new System.Windows.Forms.ComboBox();
             lblImagePNGBitDepth = new System.Windows.Forms.Label();
             cbImageAutoUseJPEG = new System.Windows.Forms.CheckBox();
@@ -941,6 +943,8 @@
             // pImage
             // 
             pImage.Controls.Add(cbImageAutoJPEGQuality);
+            pImage.Controls.Add(cbImageAVIFTuneIQ);
+            pImage.Controls.Add(lblImageAVIFTuneIQ);
             pImage.Controls.Add(cbImagePNGBitDepth);
             pImage.Controls.Add(lblImagePNGBitDepth);
             pImage.Controls.Add(cbImageAutoUseJPEG);
@@ -964,6 +968,19 @@
             cbImageAutoJPEGQuality.Name = "cbImageAutoJPEGQuality";
             cbImageAutoJPEGQuality.UseVisualStyleBackColor = true;
             cbImageAutoJPEGQuality.CheckedChanged += cbImageAutoJPEGQuality_CheckedChanged;
+            // 
+            // cbImageAVIFTuneIQ
+            // 
+            cbImageAVIFTuneIQ.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cbImageAVIFTuneIQ.FormattingEnabled = true;
+            resources.ApplyResources(cbImageAVIFTuneIQ, "cbImageAVIFTuneIQ");
+            cbImageAVIFTuneIQ.Name = "cbImageAVIFTuneIQ";
+            cbImageAVIFTuneIQ.SelectedIndexChanged += cbImageAVIFTuneIQ_SelectedIndexChanged;
+            // 
+            // lblImageAVIFTuneIQ
+            // 
+            resources.ApplyResources(lblImageAVIFTuneIQ, "lblImageAVIFTuneIQ");
+            lblImageAVIFTuneIQ.Name = "lblImageAVIFTuneIQ";
             // 
             // cbImagePNGBitDepth
             // 
@@ -2945,5 +2962,7 @@
         private System.Windows.Forms.CheckBox cbImageEditorUseSystemTheme;
         private System.Windows.Forms.CheckBox cbImageEditorUseSystemAccentColor;
         private System.Windows.Forms.CheckBox cbImageEditorRememberWindowState;
+        private System.Windows.Forms.ComboBox cbImageAVIFTuneIQ;
+        private System.Windows.Forms.Label lblImageAVIFTuneIQ;
     }
 }
