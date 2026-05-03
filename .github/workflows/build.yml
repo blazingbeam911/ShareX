@@ -1,11 +1,12 @@
 name: Build ShareX
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "**"
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
     paths-ignore:
       - "**/*.md"
       - "**/*.gitignore"
@@ -196,7 +197,6 @@ jobs:
       contents: write
 
     env:
-      REPO_DEV_BUILDS: ${{ github.repository_owner }}/DevBuilds
       RELEASE_BODY_PATH: RELEASE_BODY.md
       APP_VERSION: ${{ needs.build.outputs.APP_VERSION }}
 
@@ -298,15 +298,12 @@ jobs:
           Set-Content -Path "${{ env.RELEASE_BODY_PATH }}" -Value "$output" -NoNewline
 
       - name: Release (Dev)
-        env:
-          CUSTOM_GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-        if: env.CUSTOM_GITHUB_TOKEN != '' && env.REPO_DEV_BUILDS != '' && github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/custom'
         uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ env.REPO_DEV_BUILDS }}
-          token: ${{ env.CUSTOM_GITHUB_TOKEN }}
-          tag_name: v${{ env.APP_VERSION }}
-          name: ShareX ${{ env.APP_VERSION }} Dev
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: dev-build-${{ env.APP_VERSION }}
+          name: ShareX ${{ env.APP_VERSION }} (custom dev build)
           body_path: ${{ env.RELEASE_BODY_PATH }}
           draft: false
           prerelease: false
@@ -325,18 +322,15 @@ jobs:
             Output/ShareX-${{ env.APP_VERSION }}-MicrosoftStore-debug-arm64.appx
 
       - name: Release (Stable)
-        env:
-          CUSTOM_GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-        if: env.CUSTOM_GITHUB_TOKEN != '' && startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ github.repository }}
-          token: ${{ env.CUSTOM_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.ref_name }}
-          name: ShareX ${{ env.APP_VERSION }}
+          name: ShareX ${{ env.APP_VERSION }} (custom)
           body_path: ${{ env.RELEASE_BODY_PATH }}
-          draft: true
-          prerelease: true
+          draft: false
+          prerelease: false
           files: |
             Output/ShareX-${{ env.APP_VERSION }}-setup-x64.exe
             # Output/ShareX-${{ env.APP_VERSION }}-setup-arm64.exe
