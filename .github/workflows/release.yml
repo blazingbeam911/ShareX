@@ -1,0 +1,70 @@
+name: Tag and release
+
+# Manual-trigger workflow that creates a versioned tag on the current `custom`
+# branch tip. Pushing the tag triggers `build.yml`, which builds artifacts and
+# (because the ref starts with `refs/tags/v`) creates a GitHub Release on this
+# fork.
+#
+# Tag format: v<base-version>-custom-<YYYY-MM-DD>-<short-sha>
+# where <base-version> is read from Directory.build.props.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_suffix:
+        description: 'Optional suffix to use instead of the auto-incrementing run number (e.g. "rc1" -> v20.0.4-rc1; default uses run number e.g. v20.0.4.42)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag custom and trigger build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout custom
+        uses: actions/checkout@v4
+        with:
+          ref: custom
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute tag name
+        id: tag
+        run: |
+          # Read upstream version from Directory.build.props
+          BASE=$(grep -oP '(?<=<Version>)[^<]+' Directory.build.props | head -1)
+          if [ -z "${{ inputs.version_suffix }}" ]; then
+            # 4-part version: <upstream-base>.<release.yml-run-number>
+            # release.yml's run_number increments each time this workflow runs.
+            TAG="v${BASE}.${{ github.run_number }}"
+          else
+            TAG="v${BASE}-${{ inputs.version_suffix }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Will tag as: $TAG"
+
+      - name: Verify tag doesn't already exist
+        run: |
+          if git rev-parse "refs/tags/${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.tag.outputs.tag }} already exists. Use a different version_suffix."
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git tag -a "${{ steps.tag.outputs.tag }}" -m "Custom build of ShareX from blazingbeam911/ShareX@custom"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
+      - name: Done
+        run: |
+          echo "Tag ${{ steps.tag.outputs.tag }} pushed."
+          echo "build.yml should now run automatically and create a GitHub Release."
+          echo "Watch: ${{ github.server_url }}/${{ github.repository }}/actions"
