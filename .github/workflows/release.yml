@@ -30,6 +30,7 @@ jobs:
         with:
           ref: custom
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
 
       - name: Configure git identity
         run: |
