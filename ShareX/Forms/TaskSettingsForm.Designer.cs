@@ -1015,12 +1015,14 @@
             lblImageAVIFTuneIQ.Name = "lblImageAVIFTuneIQ";
             // 
             // WebP encoder controls -- positioned in code (no .resx entries).
-            // The whole cluster is hidden when format != WEBP via UpdateWebPControlsVisibility().
+            // Inline layout: label + control on same row, NUDs at x=440 / combos at x=400.
+            // 24px row spacing keeps the cluster above y=200 where the auto-use-JPEG
+            // checkbox lives. Hidden when format != WEBP via UpdateWebPControlsVisibility().
             // 
             // lblImageWebPMode
             // 
             lblImageWebPMode.AutoSize = true;
-            lblImageWebPMode.Location = new System.Drawing.Point(296, 8);
+            lblImageWebPMode.Location = new System.Drawing.Point(296, 11);
             lblImageWebPMode.Name = "lblImageWebPMode";
             lblImageWebPMode.Text = "WebP mode:";
             // 
@@ -1028,21 +1030,21 @@
             // 
             cbImageWebPMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             cbImageWebPMode.FormattingEnabled = true;
-            cbImageWebPMode.Location = new System.Drawing.Point(296, 24);
+            cbImageWebPMode.Location = new System.Drawing.Point(400, 8);
             cbImageWebPMode.Name = "cbImageWebPMode";
-            cbImageWebPMode.Size = new System.Drawing.Size(160, 21);
+            cbImageWebPMode.Size = new System.Drawing.Size(150, 21);
             cbImageWebPMode.SelectedIndexChanged += cbImageWebPMode_SelectedIndexChanged;
             // 
             // lblImageWebPQuality
             // 
             lblImageWebPQuality.AutoSize = true;
-            lblImageWebPQuality.Location = new System.Drawing.Point(296, 56);
+            lblImageWebPQuality.Location = new System.Drawing.Point(296, 35);
             lblImageWebPQuality.Name = "lblImageWebPQuality";
             lblImageWebPQuality.Text = "Quality:";
             // 
             // nudImageWebPQuality
             // 
-            nudImageWebPQuality.Location = new System.Drawing.Point(400, 54);
+            nudImageWebPQuality.Location = new System.Drawing.Point(440, 32);
             nudImageWebPQuality.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             nudImageWebPQuality.Name = "nudImageWebPQuality";
             nudImageWebPQuality.Size = new System.Drawing.Size(56, 20);
@@ -1052,13 +1054,13 @@
             // lblImageWebPMethod
             // 
             lblImageWebPMethod.AutoSize = true;
-            lblImageWebPMethod.Location = new System.Drawing.Point(296, 80);
+            lblImageWebPMethod.Location = new System.Drawing.Point(296, 59);
             lblImageWebPMethod.Name = "lblImageWebPMethod";
-            lblImageWebPMethod.Text = "Method (0 fast – 6 best):";
+            lblImageWebPMethod.Text = "Method (0–6):";
             // 
             // nudImageWebPMethod
             // 
-            nudImageWebPMethod.Location = new System.Drawing.Point(400, 78);
+            nudImageWebPMethod.Location = new System.Drawing.Point(440, 56);
             nudImageWebPMethod.Maximum = new decimal(new int[] { 6, 0, 0, 0 });
             nudImageWebPMethod.Name = "nudImageWebPMethod";
             nudImageWebPMethod.Size = new System.Drawing.Size(56, 20);
@@ -1068,7 +1070,7 @@
             // lblImageWebPPreset
             // 
             lblImageWebPPreset.AutoSize = true;
-            lblImageWebPPreset.Location = new System.Drawing.Point(296, 104);
+            lblImageWebPPreset.Location = new System.Drawing.Point(296, 83);
             lblImageWebPPreset.Name = "lblImageWebPPreset";
             lblImageWebPPreset.Text = "Preset:";
             // 
@@ -1076,21 +1078,21 @@
             // 
             cbImageWebPPreset.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             cbImageWebPPreset.FormattingEnabled = true;
-            cbImageWebPPreset.Location = new System.Drawing.Point(296, 120);
+            cbImageWebPPreset.Location = new System.Drawing.Point(400, 80);
             cbImageWebPPreset.Name = "cbImageWebPPreset";
-            cbImageWebPPreset.Size = new System.Drawing.Size(212, 21);
+            cbImageWebPPreset.Size = new System.Drawing.Size(150, 21);
             cbImageWebPPreset.SelectedIndexChanged += cbImageWebPPreset_SelectedIndexChanged;
             // 
             // lblImageWebPNearLosslessLevel
             // 
             lblImageWebPNearLosslessLevel.AutoSize = true;
-            lblImageWebPNearLosslessLevel.Location = new System.Drawing.Point(296, 152);
+            lblImageWebPNearLosslessLevel.Location = new System.Drawing.Point(296, 107);
             lblImageWebPNearLosslessLevel.Name = "lblImageWebPNearLosslessLevel";
             lblImageWebPNearLosslessLevel.Text = "Near-lossless level:";
             // 
             // nudImageWebPNearLosslessLevel
             // 
-            nudImageWebPNearLosslessLevel.Location = new System.Drawing.Point(400, 150);
+            nudImageWebPNearLosslessLevel.Location = new System.Drawing.Point(440, 104);
             nudImageWebPNearLosslessLevel.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             nudImageWebPNearLosslessLevel.Name = "nudImageWebPNearLosslessLevel";
             nudImageWebPNearLosslessLevel.Size = new System.Drawing.Size(56, 20);
@@ -1101,20 +1103,20 @@
             // 
             lblImageWebPNearLosslessHint.AutoSize = true;
             lblImageWebPNearLosslessHint.ForeColor = System.Drawing.SystemColors.GrayText;
-            lblImageWebPNearLosslessHint.Location = new System.Drawing.Point(296, 172);
+            lblImageWebPNearLosslessHint.Location = new System.Drawing.Point(296, 124);
             lblImageWebPNearLosslessHint.Name = "lblImageWebPNearLosslessHint";
-            lblImageWebPNearLosslessHint.Text = "0 = max loss, 100 = off (libwebp semantics)";
+            lblImageWebPNearLosslessHint.Text = "0 = max loss, 100 = off";
             // 
             // lblImageWebPAlphaQuality
             // 
             lblImageWebPAlphaQuality.AutoSize = true;
-            lblImageWebPAlphaQuality.Location = new System.Drawing.Point(296, 200);
+            lblImageWebPAlphaQuality.Location = new System.Drawing.Point(296, 147);
             lblImageWebPAlphaQuality.Name = "lblImageWebPAlphaQuality";
             lblImageWebPAlphaQuality.Text = "Alpha quality:";
             // 
             // nudImageWebPAlphaQuality
             // 
-            nudImageWebPAlphaQuality.Location = new System.Drawing.Point(400, 198);
+            nudImageWebPAlphaQuality.Location = new System.Drawing.Point(440, 144);
             nudImageWebPAlphaQuality.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             nudImageWebPAlphaQuality.Name = "nudImageWebPAlphaQuality";
             nudImageWebPAlphaQuality.Size = new System.Drawing.Size(56, 20);
@@ -1124,9 +1126,9 @@
             // cbImageWebPExact
             // 
             cbImageWebPExact.AutoSize = true;
-            cbImageWebPExact.Location = new System.Drawing.Point(296, 224);
+            cbImageWebPExact.Location = new System.Drawing.Point(296, 170);
             cbImageWebPExact.Name = "cbImageWebPExact";
-            cbImageWebPExact.Text = "Preserve RGB under fully transparent pixels";
+            cbImageWebPExact.Text = "Preserve RGB under transparency";
             cbImageWebPExact.UseVisualStyleBackColor = true;
             cbImageWebPExact.CheckedChanged += cbImageWebPExact_CheckedChanged;
             // 
