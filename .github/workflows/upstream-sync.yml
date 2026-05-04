@@ -1,0 +1,220 @@
+name: Upstream sync
+
+# Pulls the latest from ShareX/ShareX, fast-forwards our `develop` to match,
+# rebases each cherry-picked feature branch onto the new develop in dependency
+# order, then rebuilds `custom` by re-merging everything. If any rebase or
+# merge hits a conflict, the workflow opens a GitHub issue with the details
+# and stops, leaving the affected branch in its old state for manual fixup.
+#
+# Branches handled (in dependency order):
+#   feature/pr-8151-webp-avif-av1     -> rebases onto develop
+#   feature/delphox-av1-crf            -> rebases onto feature/pr-8151-webp-avif-av1
+#   feature/delphox-codec-fix          -> rebases onto feature/delphox-av1-crf
+#   feature/delphox-libavif-update     -> rebases onto feature/pr-8151-webp-avif-av1
+#   feature/webp-encoding-options      -> rebases onto feature/pr-8151-webp-avif-av1
+#   feature/repoint-updater            -> rebases onto develop
+#   feature/build-deps-from-source     -> not rebased (CI infra, doesn't touch source)
+#   feature/replace-with-vcpkg-builds  -> not rebased (modifies DLLs that pr-8151 added)
+#
+# After all rebases succeed, `custom` is rebuilt from `develop` by --no-ff
+# merging each branch in the same order they were merged originally.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays at 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: do everything except push and open issues'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+jobs:
+  sync:
+    name: Sync from upstream
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history, all branches)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote and fetch
+        run: |
+          git remote add upstream https://github.com/ShareX/ShareX.git
+          git fetch upstream --prune --tags
+          git fetch origin --prune
+
+      - name: Capture original develop SHA (for delta reporting)
+        id: before
+        run: |
+          echo "develop_sha=$(git rev-parse origin/develop)" >> $GITHUB_OUTPUT
+          echo "upstream_develop_sha=$(git rev-parse upstream/develop)" >> $GITHUB_OUTPUT
+
+      - name: Check whether upstream is ahead
+        id: ahead
+        run: |
+          BEHIND=$(git rev-list --count origin/develop..upstream/develop)
+          AHEAD=$(git rev-list --count upstream/develop..origin/develop)
+          echo "Upstream is ahead by $BEHIND commit(s); we are ahead of upstream by $AHEAD."
+          echo "behind=$BEHIND" >> $GITHUB_OUTPUT
+          echo "ahead=$AHEAD" >> $GITHUB_OUTPUT
+          if [ "$BEHIND" = "0" ]; then
+            echo "Already in sync. Nothing to do."
+          fi
+          if [ "$AHEAD" != "0" ]; then
+            echo "::warning::Our develop is $AHEAD commit(s) ahead of upstream. That shouldn't happen — develop is supposed to mirror upstream exactly. Will proceed but you should investigate."
+          fi
+
+      - name: Update local develop to upstream/develop
+        if: steps.ahead.outputs.behind != '0'
+        run: |
+          git checkout develop
+          # If our develop has accidentally diverged, hard-reset (drops the divergent commits;
+          # they're in the reflog if needed). The "we are ahead" warning above flagged this.
+          git reset --hard upstream/develop
+
+      - name: Rebase feature branches
+        if: steps.ahead.outputs.behind != '0'
+        id: rebase
+        run: |
+          set +e  # don't abort on individual failures; we want to report them all together
+          declare -a FAILED=()
+
+          # Format: "branch:base"
+          declare -a CHAIN=(
+            "feature/pr-8151-webp-avif-av1:develop"
+            "feature/delphox-av1-crf:feature/pr-8151-webp-avif-av1"
+            "feature/delphox-codec-fix:feature/delphox-av1-crf"
+            "feature/delphox-libavif-update:feature/pr-8151-webp-avif-av1"
+            "feature/webp-encoding-options:feature/pr-8151-webp-avif-av1"
+            "feature/repoint-updater:develop"
+          )
+
+          for entry in "${CHAIN[@]}"; do
+            BRANCH="${entry%%:*}"
+            BASE="${entry##*:}"
+            echo ""
+            echo "::group::Rebasing $BRANCH onto $BASE"
+
+            git checkout "$BRANCH"
+            if [ $? -ne 0 ]; then
+              echo "::error::Couldn't check out $BRANCH"
+              FAILED+=("$BRANCH:checkout-failed")
+              echo "::endgroup::"
+              continue
+            fi
+
+            git rebase "$BASE"
+            if [ $? -ne 0 ]; then
+              # Capture the conflict for the issue body
+              CONFLICT_FILES=$(git diff --name-only --diff-filter=U | head -20)
+              git rebase --abort
+              FAILED+=("$BRANCH:rebase-conflict:$CONFLICT_FILES")
+              echo "::error::Rebase of $BRANCH onto $BASE failed. Aborted. Branch left at previous state."
+              echo "::endgroup::"
+              continue
+            fi
+            echo "::endgroup::"
+          done
+
+          # Write failures to GITHUB_OUTPUT for the next step
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            {
+              echo "failures<<EOF"
+              for f in "${FAILED[@]}"; do echo "$f"; done
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          fi
+
+      - name: Rebuild custom branch
+        if: steps.ahead.outputs.behind != '0' && steps.rebase.outputs.failures == ''
+        id: rebuild
+        run: |
+          set -e
+          git checkout develop
+          # Delete and recreate custom from new develop
+          git branch -D custom 2>/dev/null || true
+          git checkout -b custom develop
+
+          # Merge order matches what's documented in CUSTOM-FORK.md.
+          # The fork-native branches (build-deps, vcpkg-builds) come last
+          # because they don't depend on the source patches.
+          for b in \
+            feature/pr-8151-webp-avif-av1 \
+            feature/delphox-av1-crf \
+            feature/delphox-codec-fix \
+            feature/delphox-libavif-update \
+            feature/webp-encoding-options \
+            feature/repoint-updater \
+            feature/build-deps-from-source \
+            feature/replace-with-vcpkg-builds; do
+            echo ""
+            echo "::group::Merging $b into custom"
+            git merge --no-ff "$b" -m "Merge $b into custom"
+            if [ $? -ne 0 ]; then
+              echo "::error::Merge of $b into custom failed."
+              echo "merge_failed=$b" >> $GITHUB_OUTPUT
+              echo "::endgroup::"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Push to fork
+        if: steps.ahead.outputs.behind != '0' && steps.rebase.outputs.failures == '' && inputs.dry_run != true
+        run: |
+          # develop is fast-forward-only normally; pushing without --force is fine
+          git push origin develop
+          # feature/* branches were rebased so need force-with-lease
+          for b in \
+            feature/pr-8151-webp-avif-av1 \
+            feature/delphox-av1-crf \
+            feature/delphox-codec-fix \
+            feature/delphox-libavif-update \
+            feature/webp-encoding-options \
+            feature/repoint-updater; do
+            git push origin "$b" --force-with-lease
+          done
+          # custom was rebuilt from scratch
+          git push origin custom --force-with-lease
+
+      - name: Open issue on rebase failure
+        if: steps.rebase.outputs.failures != '' && inputs.dry_run != true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const failures = `${{ steps.rebase.outputs.failures }}`;
+            const lines = failures.trim().split('\n');
+            let body = `Upstream sync ran but hit conflicts when rebasing one or more feature branches.\n\n`;
+            body += `Upstream went from \`${{ steps.before.outputs.develop_sha }}\` to \`${{ steps.before.outputs.upstream_develop_sha }}\`.\n\n`;
+            body += `**Failed branches:**\n\n`;
+            for (const line of lines) {
+              const [branch, kind, ...rest] = line.split(':');
+              body += `- \`${branch}\` (${kind})`;
+              if (rest.length > 0) {
+                body += `\n  Conflicting files:\n  \`\`\`\n  ${rest.join(':')}\n  \`\`\``;
+              }
+              body += `\n`;
+            }
+            body += `\n**To fix:** check out the failing branch locally, run \`git rebase upstream/develop\` (or the appropriate base from CUSTOM-FORK.md), resolve conflicts, force-push. Then re-run this workflow.\n\n`;
+            body += `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Upstream sync: ${lines.length} branch(es) failed to rebase`,
+              body: body,
+              labels: ['upstream-sync', 'needs-attention']
+            });
