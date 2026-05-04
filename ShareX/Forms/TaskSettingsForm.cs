@@ -239,7 +239,14 @@ namespace ShareX
 			UpdateImageQualityLabelBasedOnFormat();
             cbImageAVIFTuneIQ.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<AvifTuneIQ>());
             cbImageAVIFTuneIQ.SelectedIndex = (int)TaskSettings.ImageSettings.ImageAVIFTuneIQ;
-            UpdateAvifTuneVisibility();
+            cbImageWebPMode.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<WebPCompressionMode>());
+            cbImageWebPMode.SelectedIndex = (int)TaskSettings.ImageSettings.ImageWebPMode;
+            cbImageWebPPreset.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<WebPEncodingPreset>());
+            cbImageWebPPreset.SelectedIndex = (int)TaskSettings.ImageSettings.ImageWebPPreset;
+            nudImageWebPQuality.SetValue(TaskSettings.ImageSettings.ImageWebPQuality);
+            nudImageWebPMethod.SetValue(TaskSettings.ImageSettings.ImageWebPMethod);
+            nudImageWebPAlphaQuality.SetValue(TaskSettings.ImageSettings.ImageWebPAlphaQuality);
+            cbImageWebPExact.Checked = TaskSettings.ImageSettings.ImageWebPExact;
             cbImageAutoUseJPEG.Checked = TaskSettings.ImageSettings.ImageAutoUseJPEG;
             nudImageAutoUseJPEGSize.Enabled = TaskSettings.ImageSettings.ImageAutoUseJPEG;
             cbImageAutoJPEGQuality.Enabled = TaskSettings.ImageSettings.ImageAutoUseJPEG;
@@ -992,7 +999,6 @@ namespace ShareX
         {
             TaskSettings.ImageSettings.ImageFormat = (EImageFormat)cbImageFormat.SelectedIndex;
 			UpdateImageQualityLabelBasedOnFormat();
-            UpdateAvifTuneVisibility();
         }
 
 		private void UpdateImageQualityLabelBasedOnFormat()
@@ -1008,11 +1014,53 @@ namespace ShareX
 			}
 		}
 
+        // No-op stub: the existing PR #8151 code path still calls this, but we now
+        // keep AVIF tune always visible (consistent with PNG/GIF/JPEG controls).
         private void UpdateAvifTuneVisibility()
         {
-            bool isAvif = (EImageFormat)cbImageFormat.SelectedIndex == EImageFormat.AVIF;
-            lblImageAVIFTuneIQ.Visible = isAvif;
-            cbImageAVIFTuneIQ.Visible = isAvif;
+            lblImageAVIFTuneIQ.Visible = true;
+            cbImageAVIFTuneIQ.Visible = true;
+        }
+
+        private void cbImageWebPMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPMode = (WebPCompressionMode)cbImageWebPMode.SelectedIndex;
+            UpdateWebPQualityLabel();
+        }
+
+        // libwebp's 'quality' field is dual-purpose: in lossy mode it's visual quality
+        // (higher = bigger, better), in lossless mode it's compression effort (higher =
+        // slower, smaller). Reflect that in the label so the slider's meaning is obvious.
+        private void UpdateWebPQualityLabel()
+        {
+            lblImageWebPQuality.Text = TaskSettings.ImageSettings.ImageWebPMode == WebPCompressionMode.Lossless
+                ? "WebP compression effort:"
+                : "WebP quality:";
+        }
+
+        private void nudImageWebPQuality_ValueChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPQuality = (int)nudImageWebPQuality.Value;
+        }
+
+        private void nudImageWebPMethod_ValueChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPMethod = (int)nudImageWebPMethod.Value;
+        }
+
+        private void cbImageWebPPreset_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPPreset = (WebPEncodingPreset)cbImageWebPPreset.SelectedIndex;
+        }
+
+        private void nudImageWebPAlphaQuality_ValueChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPAlphaQuality = (int)nudImageWebPAlphaQuality.Value;
+        }
+
+        private void cbImageWebPExact_CheckedChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageWebPExact = cbImageWebPExact.Checked;
         }
 
         private void cbImageAVIFTuneIQ_SelectedIndexChanged(object sender, EventArgs e)

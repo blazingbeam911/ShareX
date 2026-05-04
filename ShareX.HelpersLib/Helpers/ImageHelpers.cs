@@ -2246,22 +2246,39 @@ namespace ShareX.HelpersLib
             }
         }
 
+        // Legacy entry points -- thin wrappers around the WebPEncodingOptions overload.
         public static void SaveWebP(Image img, string filePath, int quality = 80)
         {
-            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read))
-            {
-                SaveWebPToStream(img, fs, quality);
-            }
+            SaveWebP(img, filePath, new WebPEncodingOptions { Quality = quality });
         }
 
         public static void SaveWebPToStream(Image img, Stream stream, int quality = 80)
+        {
+            SaveWebPToStream(img, stream, new WebPEncodingOptions { Quality = quality });
+        }
+
+        public static void SaveWebP(Image img, string filePath, WebPEncodingOptions options)
+        {
+            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                SaveWebPToStream(img, fs, options);
+            }
+        }
+
+        public static void SaveWebPToStream(Image img, Stream stream, WebPEncodingOptions options)
         {
             if (img == null)
                 throw new ArgumentNullException(nameof(img));
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
-            if (quality < 0 || quality > 100)
-                throw new ArgumentOutOfRangeException(nameof(quality), "Quality must be between 0 and 100");
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            if (options.Quality < 0 || options.Quality > 100)
+                throw new ArgumentOutOfRangeException(nameof(options.Quality), "Quality must be between 0 and 100");
+            if (options.Method < 0 || options.Method > 6)
+                throw new ArgumentOutOfRangeException(nameof(options.Method), "Method must be between 0 and 6");
+            if (options.AlphaQuality < 0 || options.AlphaQuality > 100)
+                throw new ArgumentOutOfRangeException(nameof(options.AlphaQuality), "AlphaQuality must be between 0 and 100");
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
 
@@ -2269,54 +2286,124 @@ namespace ShareX.HelpersLib
             {
                 using (var g = Graphics.FromImage(bmpBgra))
                 {
-                    // Use high quality settings for the conversion
                     g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     g.SmoothingMode = SmoothingMode.HighQuality;
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     g.CompositingQuality = CompositingQuality.HighQuality;
-
                     g.DrawImage(img, 0, 0, img.Width, img.Height);
                 }
 
-                BitmapData bmpData = null;
-                IntPtr output = IntPtr.Zero;
+                EncodeWebP(bmpBgra, stream, options);
+            }
+        }
 
-                try
+        // Drives the full WebPConfig + WebPPicture + WebPEncode pipeline.
+        // See https://developers.google.com/speed/webp/docs/api for field semantics.
+        private static void EncodeWebP(Bitmap bmpBgra, Stream stream, WebPEncodingOptions options)
+        {
+            var preset = MapPreset(options.Preset);
+
+            NativeMethods.WebPConfig config = default;
+            if (NativeMethods.WebPConfigInitInternal(ref config, preset, options.Quality,
+                    NativeMethods.WEBP_ENCODER_ABI_VERSION) == 0)
+            {
+                throw new ApplicationException("WebPConfigInit failed (libwebp ABI version mismatch?)");
+            }
+
+            switch (options.Mode)
+            {
+                case WebPCompressionMode.Lossless:
+                    // Map the 0..100 quality slider to libwebp's 0..9 lossless effort scale.
+                    int level = (int)Math.Round(options.Quality * 9.0 / 100.0);
+                    if (level < 0) level = 0;
+                    if (level > 9) level = 9;
+                    if (NativeMethods.WebPConfigLosslessPreset(ref config, level) == 0)
+                    {
+                        throw new ApplicationException("WebPConfigLosslessPreset failed");
+                    }
+                    break;
+                case WebPCompressionMode.Lossy:
+                default:
+                    config.lossless = 0;
+                    config.near_lossless = 100; // off
+                    break;
+            }
+
+            config.method = options.Method;
+            config.alpha_quality = options.AlphaQuality;
+            config.exact = options.Exact ? 1 : 0;
+            config.thread_level = 1; // let libwebp use its threads when available
+
+            if (NativeMethods.WebPValidateConfig(ref config) == 0)
+            {
+                throw new ApplicationException("WebPValidateConfig rejected the configuration");
+            }
+
+            NativeMethods.WebPPicture picture = default;
+            if (NativeMethods.WebPPictureInitInternal(ref picture, NativeMethods.WEBP_ENCODER_ABI_VERSION) == 0)
+            {
+                throw new ApplicationException("WebPPictureInit failed (libwebp ABI version mismatch?)");
+            }
+
+            picture.use_argb = 1;
+            picture.width = bmpBgra.Width;
+            picture.height = bmpBgra.Height;
+
+            // Managed writer hook: each chunk gets copied into the output stream.
+            // Hold the delegate in a local so the GC doesn't collect it before WebPEncode returns.
+            var outputStream = stream;
+            NativeMethods.WebPWriterFunction writer = (data, dataSize, _) =>
+            {
+                long size = (long)(ulong)dataSize;
+                if (size <= 0) return 1;
+                byte[] buf = new byte[size];
+                Marshal.Copy(data, buf, 0, (int)size);
+                outputStream.Write(buf, 0, (int)size);
+                return 1;
+            };
+            picture.writer = Marshal.GetFunctionPointerForDelegate(writer);
+            picture.custom_ptr = IntPtr.Zero;
+
+            BitmapData bmpData = null;
+            try
+            {
+                bmpData = bmpBgra.LockBits(
+                    new Rectangle(0, 0, bmpBgra.Width, bmpBgra.Height),
+                    ImageLockMode.ReadOnly,
+                    PixelFormat.Format32bppArgb);
+
+                if (NativeMethods.WebPPictureImportBGRA(ref picture, bmpData.Scan0, bmpData.Stride) == 0)
                 {
-                    bmpData = bmpBgra.LockBits(
-                        new Rectangle(0, 0, bmpBgra.Width, bmpBgra.Height),
-                        ImageLockMode.ReadOnly,
-                        PixelFormat.Format32bppArgb);
-
-                    int size = NativeMethods.WebPEncodeBGRA(
-                        bmpData.Scan0,
-                        bmpBgra.Width,
-                        bmpBgra.Height,
-                        bmpData.Stride,
-                        quality,
-                        out output);
-
-                    if (size <= 0)
-                    {
-                        throw new ApplicationException("WebP encoding failed");
-                    }
-
-                    byte[] buffer = new byte[size];
-                    Marshal.Copy(output, buffer, 0, size);
-                    stream.Write(buffer, 0, size);
+                    throw new ApplicationException("WebPPictureImportBGRA failed: " + picture.error_code);
                 }
-                finally
+
+                if (NativeMethods.WebPEncode(ref config, ref picture) == 0)
                 {
-                    if (bmpData != null)
-                    {
-                        bmpBgra.UnlockBits(bmpData);
-                    }
-
-                    if (output != IntPtr.Zero)
-                    {
-                        NativeMethods.WebPFree(output);
-                    }
+                    throw new ApplicationException("WebPEncode failed: " + picture.error_code);
                 }
+            }
+            finally
+            {
+                if (bmpData != null)
+                {
+                    bmpBgra.UnlockBits(bmpData);
+                }
+                NativeMethods.WebPPictureFree(ref picture);
+                GC.KeepAlive(writer);
+            }
+        }
+
+        private static NativeMethods.WebPPreset MapPreset(WebPEncodingPreset preset)
+        {
+            switch (preset)
+            {
+                case WebPEncodingPreset.Picture: return NativeMethods.WebPPreset.WEBP_PRESET_PICTURE;
+                case WebPEncodingPreset.Photo:   return NativeMethods.WebPPreset.WEBP_PRESET_PHOTO;
+                case WebPEncodingPreset.Drawing: return NativeMethods.WebPPreset.WEBP_PRESET_DRAWING;
+                case WebPEncodingPreset.Icon:    return NativeMethods.WebPPreset.WEBP_PRESET_ICON;
+                case WebPEncodingPreset.Text:    return NativeMethods.WebPPreset.WEBP_PRESET_TEXT;
+                case WebPEncodingPreset.Default:
+                default:                         return NativeMethods.WebPPreset.WEBP_PRESET_DEFAULT;
             }
         }
         public static bool SaveAvif(Image img, string filePath, int quality = 80, int speed = 6, AvifTuneIQ tuneIQ = AvifTuneIQ.Default)

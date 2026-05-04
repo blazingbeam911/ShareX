@@ -490,6 +490,12 @@ namespace ShareX.HelpersLib
         #region libwebp.dll
         private const string LibWebP = "libwebp.dll";
 
+        // Must match WEBP_ENCODER_ABI_VERSION in libwebp's src/webp/encode.h.
+        // Bumped in lockstep with the libwebp build shipped under ShareX/libwebp.dll.
+        public const int WEBP_ENCODER_ABI_VERSION = 0x0210;
+
+        // ---- Simple one-shot helpers (legacy callers) -------------------------------------------
+
         [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
         public static extern int WebPEncodeBGRA(
             IntPtr rgba, int width, int height, int stride,
@@ -503,6 +509,202 @@ namespace ShareX.HelpersLib
 
         [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr WebPDecodeBGRA(IntPtr data, uint data_size, out int width, out int height);
+
+        // ---- Full pipeline (WebPConfig + WebPPicture + WebPEncode) ------------------------------
+        // Used by the configurable WebP encoder path in ImageHelpers.SaveWebP. References:
+        //   https://developers.google.com/speed/webp/docs/api
+        //   https://github.com/webmproject/libwebp/blob/main/src/webp/encode.h
+
+        public enum WebPImageHint
+        {
+            WEBP_HINT_DEFAULT = 0,
+            WEBP_HINT_PICTURE = 1,
+            WEBP_HINT_PHOTO = 2,
+            WEBP_HINT_GRAPH = 3,
+            WEBP_HINT_LAST = 4
+        }
+
+        public enum WebPPreset
+        {
+            WEBP_PRESET_DEFAULT = 0,
+            WEBP_PRESET_PICTURE = 1,
+            WEBP_PRESET_PHOTO = 2,
+            WEBP_PRESET_DRAWING = 3,
+            WEBP_PRESET_ICON = 4,
+            WEBP_PRESET_TEXT = 5
+        }
+
+        public enum WebPEncodingError
+        {
+            VP8_ENC_OK = 0,
+            VP8_ENC_ERROR_OUT_OF_MEMORY,
+            VP8_ENC_ERROR_BITSTREAM_OUT_OF_MEMORY,
+            VP8_ENC_ERROR_NULL_PARAMETER,
+            VP8_ENC_ERROR_INVALID_CONFIGURATION,
+            VP8_ENC_ERROR_BAD_DIMENSION,
+            VP8_ENC_ERROR_PARTITION0_OVERFLOW,
+            VP8_ENC_ERROR_PARTITION_OVERFLOW,
+            VP8_ENC_ERROR_BAD_WRITE,
+            VP8_ENC_ERROR_FILE_TOO_BIG,
+            VP8_ENC_ERROR_USER_ABORT,
+            VP8_ENC_ERROR_LAST
+        }
+
+        // Mirror of struct WebPConfig (encode.h). 29 32-bit fields, two of which are float.
+        // Layout MUST match libwebp's struct exactly. LayoutKind.Sequential with default
+        // (4-byte) packing matches the C compiler's layout for ints/floats/enums.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WebPConfig
+        {
+            public int lossless;
+            public float quality;
+            public int method;
+            public WebPImageHint image_hint;
+            public int target_size;
+            public float target_PSNR;
+            public int segments;
+            public int sns_strength;
+            public int filter_strength;
+            public int filter_sharpness;
+            public int filter_type;
+            public int autofilter;
+            public int alpha_compression;
+            public int alpha_filtering;
+            public int alpha_quality;
+            public int pass;
+            public int show_compressed;
+            public int preprocessing;
+            public int partitions;
+            public int partition_limit;
+            public int emulate_jpeg_size;
+            public int thread_level;
+            public int low_memory;
+            public int near_lossless;
+            public int exact;
+            public int use_delta_palette;
+            public int use_sharp_yuv;
+            public int qmin;
+            public int qmax;
+        }
+
+        // Mirror of struct WebPPicture (encode.h). x64 layout — pointers are 8 bytes.
+        // Padding fields (pad1..pad7) are kept verbatim so sizeof() matches.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WebPPicture
+        {
+            // INPUT
+            public int use_argb;
+
+            // YUV input
+            public int colorspace; // WebPEncCSP
+            public int width;
+            public int height;
+            public IntPtr y;
+            public IntPtr u;
+            public IntPtr v;
+            public int y_stride;
+            public int uv_stride;
+            public IntPtr a;
+            public int a_stride;
+            public uint pad1_0;
+            public uint pad1_1;
+
+            // ARGB input
+            public IntPtr argb;
+            public int argb_stride;
+            public uint pad2_0;
+            public uint pad2_1;
+            public uint pad2_2;
+
+            // OUTPUT
+            public IntPtr writer; // WebPWriterFunction
+            public IntPtr custom_ptr;
+
+            // map for extra information (lossy only)
+            public int extra_info_type;
+            public IntPtr extra_info;
+
+            // STATS AND REPORTS
+            public IntPtr stats;
+            public WebPEncodingError error_code;
+            public IntPtr progress_hook;
+            public IntPtr user_data;
+
+            public uint pad3_0;
+            public uint pad3_1;
+            public uint pad3_2;
+
+            public IntPtr pad4;
+            public IntPtr pad5;
+
+            public uint pad6_0;
+            public uint pad6_1;
+            public uint pad6_2;
+            public uint pad6_3;
+            public uint pad6_4;
+            public uint pad6_5;
+            public uint pad6_6;
+            public uint pad6_7;
+
+            // PRIVATE
+            public IntPtr memory_;
+            public IntPtr memory_argb_;
+            public IntPtr pad7_0;
+            public IntPtr pad7_1;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WebPMemoryWriter
+        {
+            public IntPtr mem;
+            public UIntPtr size;
+            public UIntPtr max_size;
+            public uint pad_0;
+        }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int WebPWriterFunction(IntPtr data, UIntPtr data_size, IntPtr picture);
+
+        // --- Config
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPConfigInitInternal(
+            ref WebPConfig config, WebPPreset preset, float quality, int abi_version);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPConfigLosslessPreset(ref WebPConfig config, int level);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPValidateConfig(ref WebPConfig config);
+
+        // --- Picture
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPPictureInitInternal(ref WebPPicture picture, int abi_version);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPPictureAlloc(ref WebPPicture picture);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void WebPPictureFree(ref WebPPicture picture);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPPictureImportBGRA(
+            ref WebPPicture picture, IntPtr bgra, int bgra_stride);
+
+        // --- Encode
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int WebPEncode(ref WebPConfig config, ref WebPPicture picture);
+
+        // --- Memory writer (kept for completeness; the managed encoder uses its own delegate)
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void WebPMemoryWriterInit(ref WebPMemoryWriter writer);
+
+        [DllImport(LibWebP, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void WebPMemoryWriterClear(ref WebPMemoryWriter writer);
+
         #endregion libwebp.dll
 
         #region avif.dll

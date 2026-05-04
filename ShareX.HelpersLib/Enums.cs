@@ -77,6 +77,30 @@ namespace ShareX.HelpersLib
         SSIM
     }
 
+    public enum WebPCompressionMode // Localized
+    {
+        [Description("Lossy")]
+        Lossy,
+        [Description("Lossless")]
+        Lossless
+    }
+
+    public enum WebPEncodingPreset // Localized
+    {
+        [Description("Default")]
+        Default,
+        [Description("Picture (portrait, indoor)")]
+        Picture,
+        [Description("Photo (outdoor, natural)")]
+        Photo,
+        [Description("Drawing (high-contrast line art)")]
+        Drawing,
+        [Description("Icon (small colorful)")]
+        Icon,
+        [Description("Text")]
+        Text
+    }
+
     public enum HashType
     {
         [Description("CRC-32")]
