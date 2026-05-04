@@ -1025,6 +1025,17 @@ namespace ShareX
         private void cbImageWebPMode_SelectedIndexChanged(object sender, EventArgs e)
         {
             TaskSettings.ImageSettings.ImageWebPMode = (WebPCompressionMode)cbImageWebPMode.SelectedIndex;
+            UpdateWebPQualityLabel();
+        }
+
+        // libwebp's 'quality' field is dual-purpose: in lossy mode it's visual quality
+        // (higher = bigger, better), in lossless mode it's compression effort (higher =
+        // slower, smaller). Reflect that in the label so the slider's meaning is obvious.
+        private void UpdateWebPQualityLabel()
+        {
+            lblImageWebPQuality.Text = TaskSettings.ImageSettings.ImageWebPMode == WebPCompressionMode.Lossless
+                ? "WebP compression effort:"
+                : "WebP quality:";
         }
 
         private void nudImageWebPQuality_ValueChanged(object sender, EventArgs e)
