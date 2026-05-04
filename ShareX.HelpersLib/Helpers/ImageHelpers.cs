@@ -2277,8 +2277,6 @@ namespace ShareX.HelpersLib
                 throw new ArgumentOutOfRangeException(nameof(options.Quality), "Quality must be between 0 and 100");
             if (options.Method < 0 || options.Method > 6)
                 throw new ArgumentOutOfRangeException(nameof(options.Method), "Method must be between 0 and 6");
-            if (options.NearLosslessLevel < 0 || options.NearLosslessLevel > 100)
-                throw new ArgumentOutOfRangeException(nameof(options.NearLosslessLevel), "NearLosslessLevel must be between 0 and 100");
             if (options.AlphaQuality < 0 || options.AlphaQuality > 100)
                 throw new ArgumentOutOfRangeException(nameof(options.AlphaQuality), "AlphaQuality must be between 0 and 100");
             if (!stream.CanWrite)
@@ -2323,10 +2321,6 @@ namespace ShareX.HelpersLib
                     {
                         throw new ApplicationException("WebPConfigLosslessPreset failed");
                     }
-                    break;
-                case WebPCompressionMode.NearLossless:
-                    config.lossless = 0;
-                    config.near_lossless = options.NearLosslessLevel;
                     break;
                 case WebPCompressionMode.Lossy:
                 default:

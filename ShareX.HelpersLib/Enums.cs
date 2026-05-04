@@ -81,8 +81,6 @@ namespace ShareX.HelpersLib
     {
         [Description("Lossy")]
         Lossy,
-        [Description("Near-lossless")]
-        NearLossless,
         [Description("Lossless")]
         Lossless
     }

@@ -239,17 +239,14 @@ namespace ShareX
 			UpdateImageQualityLabelBasedOnFormat();
             cbImageAVIFTuneIQ.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<AvifTuneIQ>());
             cbImageAVIFTuneIQ.SelectedIndex = (int)TaskSettings.ImageSettings.ImageAVIFTuneIQ;
-            UpdateAvifTuneVisibility();
             cbImageWebPMode.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<WebPCompressionMode>());
             cbImageWebPMode.SelectedIndex = (int)TaskSettings.ImageSettings.ImageWebPMode;
             cbImageWebPPreset.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<WebPEncodingPreset>());
             cbImageWebPPreset.SelectedIndex = (int)TaskSettings.ImageSettings.ImageWebPPreset;
             nudImageWebPQuality.SetValue(TaskSettings.ImageSettings.ImageWebPQuality);
             nudImageWebPMethod.SetValue(TaskSettings.ImageSettings.ImageWebPMethod);
-            nudImageWebPNearLosslessLevel.SetValue(TaskSettings.ImageSettings.ImageWebPNearLosslessLevel);
             nudImageWebPAlphaQuality.SetValue(TaskSettings.ImageSettings.ImageWebPAlphaQuality);
             cbImageWebPExact.Checked = TaskSettings.ImageSettings.ImageWebPExact;
-            UpdateWebPControlsVisibility();
             cbImageAutoUseJPEG.Checked = TaskSettings.ImageSettings.ImageAutoUseJPEG;
             nudImageAutoUseJPEGSize.Enabled = TaskSettings.ImageSettings.ImageAutoUseJPEG;
             cbImageAutoJPEGQuality.Enabled = TaskSettings.ImageSettings.ImageAutoUseJPEG;
@@ -1002,8 +999,6 @@ namespace ShareX
         {
             TaskSettings.ImageSettings.ImageFormat = (EImageFormat)cbImageFormat.SelectedIndex;
 			UpdateImageQualityLabelBasedOnFormat();
-            UpdateAvifTuneVisibility();
-            UpdateWebPControlsVisibility();
         }
 
 		private void UpdateImageQualityLabelBasedOnFormat()
@@ -1017,58 +1012,19 @@ namespace ShareX
 			{
 				lblImageJPEGQuality.Text = Resources.ResourceManager.GetString("Label_JPEGQuality");
 			}
-
-			// WebP has its own dedicated quality NUD, so hide the shared JPEG one for WebP.
-			bool isWebP = currentFormat == EImageFormat.WEBP;
-			lblImageJPEGQuality.Visible = !isWebP;
-			nudImageJPEGQuality.Visible = !isWebP;
-			lblImageJPEGQualityHint.Visible = !isWebP;
 		}
 
+        // No-op stub: the existing PR #8151 code path still calls this, but we now
+        // keep AVIF tune always visible (consistent with PNG/GIF/JPEG controls).
         private void UpdateAvifTuneVisibility()
         {
-            bool isAvif = (EImageFormat)cbImageFormat.SelectedIndex == EImageFormat.AVIF;
-            lblImageAVIFTuneIQ.Visible = isAvif;
-            cbImageAVIFTuneIQ.Visible = isAvif;
-        }
-
-        private void UpdateWebPControlsVisibility()
-        {
-            bool isWebP = (EImageFormat)cbImageFormat.SelectedIndex == EImageFormat.WEBP;
-
-            cbImageWebPMode.Visible = isWebP;
-            lblImageWebPMode.Visible = isWebP;
-            nudImageWebPQuality.Visible = isWebP;
-            lblImageWebPQuality.Visible = isWebP;
-            nudImageWebPMethod.Visible = isWebP;
-            lblImageWebPMethod.Visible = isWebP;
-            cbImageWebPPreset.Visible = isWebP;
-            lblImageWebPPreset.Visible = isWebP;
-            nudImageWebPAlphaQuality.Visible = isWebP;
-            lblImageWebPAlphaQuality.Visible = isWebP;
-            cbImageWebPExact.Visible = isWebP;
-
-            // Near-lossless fields are gated on both format and mode.
-            bool isNearLossless = isWebP && (WebPCompressionMode)cbImageWebPMode.SelectedIndex == WebPCompressionMode.NearLossless;
-            nudImageWebPNearLosslessLevel.Visible = isNearLossless;
-            lblImageWebPNearLosslessLevel.Visible = isNearLossless;
-            lblImageWebPNearLosslessHint.Visible = isNearLossless;
-
-            // Quality semantics shift in lossless mode -- relabel for clarity.
-            if (isWebP && (WebPCompressionMode)cbImageWebPMode.SelectedIndex == WebPCompressionMode.Lossless)
-            {
-                lblImageWebPQuality.Text = "Compression effort:";
-            }
-            else
-            {
-                lblImageWebPQuality.Text = "Quality:";
-            }
+            lblImageAVIFTuneIQ.Visible = true;
+            cbImageAVIFTuneIQ.Visible = true;
         }
 
         private void cbImageWebPMode_SelectedIndexChanged(object sender, EventArgs e)
         {
             TaskSettings.ImageSettings.ImageWebPMode = (WebPCompressionMode)cbImageWebPMode.SelectedIndex;
-            UpdateWebPControlsVisibility();
         }
 
         private void nudImageWebPQuality_ValueChanged(object sender, EventArgs e)
@@ -1084,11 +1040,6 @@ namespace ShareX
         private void cbImageWebPPreset_SelectedIndexChanged(object sender, EventArgs e)
         {
             TaskSettings.ImageSettings.ImageWebPPreset = (WebPEncodingPreset)cbImageWebPPreset.SelectedIndex;
-        }
-
-        private void nudImageWebPNearLosslessLevel_ValueChanged(object sender, EventArgs e)
-        {
-            TaskSettings.ImageSettings.ImageWebPNearLosslessLevel = (int)nudImageWebPNearLosslessLevel.Value;
         }
 
         private void nudImageWebPAlphaQuality_ValueChanged(object sender, EventArgs e)

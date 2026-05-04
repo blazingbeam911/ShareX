@@ -348,7 +348,6 @@ namespace ShareX
         public WebPCompressionMode ImageWebPMode = WebPCompressionMode.Lossy;
         public int ImageWebPMethod = 4;
         public WebPEncodingPreset ImageWebPPreset = WebPEncodingPreset.Default;
-        public int ImageWebPNearLosslessLevel = 60;
         public int ImageWebPAlphaQuality = 100;
         public bool ImageWebPExact = false;
 
@@ -365,7 +364,6 @@ namespace ShareX
                 Quality = ImageWebPQuality,
                 Method = ImageWebPMethod,
                 Preset = ImageWebPPreset,
-                NearLosslessLevel = ImageWebPNearLosslessLevel,
                 AlphaQuality = ImageWebPAlphaQuality,
                 Exact = ImageWebPExact
             };

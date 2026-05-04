@@ -32,13 +32,12 @@ namespace ShareX.HelpersLib
     /// </summary>
     public class WebPEncodingOptions
     {
-        /// <summary>Lossy / Near-lossless / Lossless. Drives how Quality is interpreted.</summary>
+        /// <summary>Lossy or Lossless. Drives how Quality is interpreted.</summary>
         public WebPCompressionMode Mode { get; set; } = WebPCompressionMode.Lossy;
 
         /// <summary>
         /// 0..100. For Lossy: visual quality (higher = bigger, better).
         /// For Lossless: amount of effort spent compressing (higher = slower, smaller).
-        /// Ignored when Mode is Near-lossless (use NearLosslessLevel instead).
         /// </summary>
         public int Quality { get; set; } = 75;
 
@@ -47,12 +46,6 @@ namespace ShareX.HelpersLib
 
         /// <summary>Source-image preset. Tunes multiple internal config fields.</summary>
         public WebPEncodingPreset Preset { get; set; } = WebPEncodingPreset.Default;
-
-        /// <summary>
-        /// libwebp near_lossless field. 0 = max loss, 100 = off. Only consulted when
-        /// Mode == NearLossless.
-        /// </summary>
-        public int NearLosslessLevel { get; set; } = 60;
 
         /// <summary>0..100. Quality of the alpha plane. libwebp default 100.</summary>
         public int AlphaQuality { get; set; } = 100;
