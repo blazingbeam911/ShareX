@@ -39,7 +39,7 @@ namespace ShareX
                 {
                     IsDev = false,
                     IsPortable = Program.Portable,
-                    IgnoreRevision = true
+                    IgnoreRevision = false
                 };
             }
             else
@@ -48,7 +48,7 @@ namespace ShareX
                 {
                     IsPortable = Program.Portable,
                     IncludePreRelease = UpdateChannel == UpdateChannel.PreRelease,
-                    IgnoreRevision = true
+                    IgnoreRevision = false
                 };
             }
         }
