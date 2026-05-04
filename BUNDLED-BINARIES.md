@@ -20,11 +20,16 @@ contributor and **was not built by us from source we audited**. Trust chain:
 | `libsharpyuv.dll` | `ooopus` (Apr 2025)    | `a8d6a1555` "feat: add WebP image format support"         |
 | `avif.dll`        | `ooopus` (Apr 2025)    | `260f7ece9` "update avif.dll to v1.4.0-559c589" (Delphox) |
 
-We have no record of the toolchain or upstream source commits these binaries
-were built from. They could be stock builds from the official
-[Google libwebp releases](https://storage.googleapis.com/downloads.webmproject.org/releases/webp/index.html)
-and the [AOMediaCodec libavif](https://github.com/AOMediaCodec/libavif) repo
-— or they could be tampered with. We don't know.
+**As of this fork's `feature/replace-with-vcpkg-builds` branch (merged
+into `custom`), the committed DLLs were built by our own
+`.github/workflows/build-deps.yml` workflow** at vcpkg ref `2025.12.12`,
+on a `windows-latest` GitHub Actions runner. The trust chain is now:
+us → Microsoft's vcpkg ports → upstream libavif/libwebp source.
+
+Re-running the workflow at the same vcpkg ref produces functionally
+equivalent binaries with different SHA-256 hashes (MSVC's default builds
+embed timestamps and other non-deterministic data). Provenance is
+verifiable; bit-identity is not.
 
 ## How to verify or replace them with binaries we built ourselves
 
