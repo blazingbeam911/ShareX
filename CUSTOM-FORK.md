@@ -37,7 +37,11 @@ develop  (mirrors upstream/develop, never committed to directly)
         |       (adds .github/workflows/build-deps.yml + BUNDLED-BINARIES.md)
         |
         +-- feature/replace-with-vcpkg-builds          [1 commit, fork-native]
-                (replaces the third-party native DLLs with vcpkg-built ones)
+        |       (replaces the third-party native DLLs with vcpkg-built ones)
+        |
+        +-- feature/avif-runtime-deps                  [1 commit, fork-native]
+                (adds aom/dav1d/libyuv/jpeg62 DLLs that the dynamically-linked
+                 vcpkg avif.dll requires at runtime)
 
 custom  (develop + every feature/* branch merged with --no-ff)
 ```
@@ -58,6 +62,7 @@ time the upstream-sync workflow runs; treat anything you do directly on
 | `feature/repoint-updater`                  | (us, based on Delphox 009a084d3 pattern)                              | Patch in-app updater to check `blazingbeam911/ShareX` instead of upstream |
 | `feature/build-deps-from-source`           | (us)                                                                  | Adds `build-deps.yml` workflow and `BUNDLED-BINARIES.md`              |
 | `feature/replace-with-vcpkg-builds`        | (us)                                                                  | Replaces the third-party `avif.dll`, `libwebp.dll`, `libsharpyuv.dll` with vcpkg-built versions |
+| `feature/avif-runtime-deps`                | (us)                                                                  | Adds `aom.dll`, `dav1d.dll`, `libyuv.dll`, `jpeg62.dll` (runtime dependencies of the vcpkg-built `avif.dll`) |
 
 ## CI workflows
 
