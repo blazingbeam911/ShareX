@@ -1,13 +1,24 @@
 # Bundled native binaries
 
-This fork bundles three pre-compiled Windows DLLs in `ShareX/` that the AVIF
-and WebP image format support (PR #8151) depend on:
+This fork bundles seven pre-compiled Windows DLLs in `ShareX/` that the AVIF
+and WebP image format support (PR #8151) depends on:
 
-| File              | Purpose                                  |
-| ----------------- | ---------------------------------------- |
-| `avif.dll`        | libavif — AVIF encode/decode             |
-| `libwebp.dll`     | Google libwebp — WebP encode/decode      |
-| `libsharpyuv.dll` | YUV color-space helper (libwebp project) |
+| File              | Purpose                                                       |
+| ----------------- | ------------------------------------------------------------- |
+| `avif.dll`        | libavif — AVIF encode/decode                                  |
+| `aom.dll`         | AOM — AV1 encoder backend used by libavif                     |
+| `dav1d.dll`       | dav1d — AV1 decoder backend used by libavif                   |
+| `libyuv.dll`      | libyuv — YUV ↔ RGB conversion used by libavif                 |
+| `jpeg62.dll`      | libjpeg-turbo — used by libyuv                                |
+| `libwebp.dll`     | Google libwebp — WebP encode/decode                           |
+| `libsharpyuv.dll` | YUV color-space helper used by libwebp                        |
+
+The vcpkg `libavif` port builds `avif.dll` with **dynamically-linked** codec
+backends, so all four of `avif.dll`, `aom.dll`, `dav1d.dll`, `libyuv.dll`
+must sit next to `ShareX.exe`, plus `jpeg62.dll` (a transitive dependency of
+`libyuv.dll`). The original PR #8151 shipped a single ~8 MB `avif.dll` with
+the codecs statically linked; the vcpkg replacement is split across files.
+Total disk footprint is similar (~12 MB combined vs ~8 MB monolithic).
 
 ## Provenance of the currently-committed DLLs
 
@@ -70,8 +81,9 @@ We accept the trade-off.
 If you want to replace the in-tree DLLs with the vcpkg-built ones:
 
 1. Run the workflow as above. Download the `verified-dlls-<ref>` artifact.
-2. From the artifact, copy `avif.dll`, `libwebp.dll`, and `libsharpyuv.dll`
-   into `ShareX/` of a clean clone, replacing the existing files.
+2. From the artifact, copy `avif.dll`, `aom.dll`, `dav1d.dll`, `libyuv.dll`,
+   `jpeg62.dll`, `libwebp.dll`, and `libsharpyuv.dll` into `ShareX/` of a
+   clean clone, replacing the existing files.
 3. Commit on a feature branch (e.g. `feature/replace-with-vcpkg-builds`),
    merge into `custom`, push.
 4. Rebuild ShareX. The new build will load the vcpkg-built DLLs.
@@ -102,6 +114,8 @@ vcpkg release usually means newer libavif/libwebp by side effect.
 - The `x64-windows` triplet builds dynamic-runtime MSVC DLLs. ShareX's P/Invoke
   signatures are compatible with this. If we ever needed a static-runtime
   build (`x64-windows-static`), the DLLs would still work but would be larger.
-- libavif's full Windows build with all encoders bundled is large (~8 MB).
-  The committed `avif.dll` is 8.6 MB; vcpkg's tends to produce something in
-  the same range.
+- libavif's full Windows build with all codec backends statically linked is
+  ~8 MB (the original PR #8151 `avif.dll` was 8.6 MB). The vcpkg port we use
+  builds `avif.dll` with codec backends as separate DLLs, so it ships as a
+  small shim (~200 KB) plus `aom.dll` (~10 MB), `dav1d.dll` (~1.7 MB),
+  `libyuv.dll` (~320 KB), `jpeg62.dll` (~670 KB). Combined ~12 MB.
